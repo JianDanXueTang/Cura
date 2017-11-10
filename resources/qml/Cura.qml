@@ -1,5 +1,5 @@
-// Copyright (c) 2015 Ultimaker B.V.
-// Cura is released under the terms of the AGPLv3 or higher.
+// Copyright (c) 2017 Ultimaker B.V.
+// Cura is released under the terms of the LGPLv3 or higher.
 
 import QtQuick 2.2
 import QtQuick.Controls 1.1
@@ -16,12 +16,25 @@ UM.MainWindow
 {
     id: base
     //: Cura application window title
-    title: catalog.i18nc("@title:window","Cura");
+    title: catalog.i18nc("@title:window","Ultimaker Cura");
     viewportRect: Qt.rect(0, 0, (base.width - sidebar.width) / base.width, 1.0)
-    property bool monitoringPrint: false
+    property bool showPrintMonitor: false
+
+    Connections
+    {
+        target: Printer
+        onShowPrintMonitor: {
+            if (show) {
+                topbar.startMonitoringPrint()
+            } else {
+                topbar.stopMonitoringPrint()
+            }
+        }
+    }
+
     Component.onCompleted:
     {
-        Printer.setMinimumWindowSize(UM.Theme.getSize("window_minimum_size"))
+        CuraApplication.setMinimumWindowSize(UM.Theme.getSize("window_minimum_size"))
         // Workaround silly issues with QML Action's shortcut property.
         //
         // Currently, there is no way to define shortcuts as "Application Shortcut".
@@ -45,7 +58,7 @@ UM.MainWindow
         function getMeshName(path){
             //takes the path the complete path of the meshname and returns only the filebase
             var fileName = path.slice(path.lastIndexOf("/") + 1)
-            var fileBase = fileName.slice(0, fileName.lastIndexOf("."))
+            var fileBase = fileName.slice(0, fileName.indexOf("."))
             return fileBase
         }
 
@@ -66,6 +79,10 @@ UM.MainWindow
             {
                 id: fileMenu
                 title: catalog.i18nc("@title:menu menubar:toplevel","&File");
+                MenuItem
+                {
+                    action: Cura.Actions.newProject;
+                }
 
                 MenuItem
                 {
@@ -74,11 +91,6 @@ UM.MainWindow
 
                 RecentFilesMenu { }
 
-                MenuItem
-                {
-                    action: Cura.Actions.loadWorkspace
-                }
-
                 MenuSeparator { }
 
                 MenuItem
@@ -86,28 +98,20 @@ UM.MainWindow
                     text: catalog.i18nc("@action:inmenu menubar:file", "&Save Selection to File");
                     enabled: UM.Selection.hasSelection;
                     iconName: "document-save-as";
-                    onTriggered: UM.OutputDeviceManager.requestWriteSelectionToDevice("local_file", PrintInformation.jobName, { "filter_by_machine": false });
+                    onTriggered: UM.OutputDeviceManager.requestWriteSelectionToDevice("local_file", PrintInformation.jobName, { "filter_by_machine": false, "preferred_mimetype": "application/vnd.ms-package.3dmanufacturing-3dmodel+xml"});
                 }
-                Menu
+
+                MenuItem
                 {
-                    id: saveAllMenu
-                    title: catalog.i18nc("@title:menu menubar:file","Save &All")
-                    iconName: "document-save-all";
-                    enabled: devicesModel.rowCount() > 0 && UM.Backend.progress > 0.99;
-
-                    Instantiator
+                    id: saveAsMenu
+                    text: catalog.i18nc("@title:menu menubar:file", "Save &As...")
+                    onTriggered:
                     {
-                        model: UM.OutputDevicesModel { id: devicesModel; }
-
-                        MenuItem
-                        {
-                            text: model.description;
-                            onTriggered: UM.OutputDeviceManager.requestWriteToDevice(model.id, PrintInformation.jobName, { "filter_by_machine": false });
-                        }
-                        onObjectAdded: saveAllMenu.insertItem(index, object)
-                        onObjectRemoved: saveAllMenu.removeItem(object)
+                        var localDeviceId = "local_file";
+                        UM.OutputDeviceManager.requestWriteToDevice(localDeviceId, PrintInformation.jobName, { "filter_by_machine": false, "preferred_mimetype": "application/vnd.ms-package.3dmanufacturing-3dmodel+xml"});
                     }
                 }
+
                 MenuItem
                 {
                     id: saveWorkspaceMenu
@@ -140,6 +144,7 @@ UM.MainWindow
                 MenuItem { action: Cura.Actions.redo; }
                 MenuSeparator { }
                 MenuItem { action: Cura.Actions.selectAll; }
+                MenuItem { action: Cura.Actions.arrangeAll; }
                 MenuItem { action: Cura.Actions.deleteSelection; }
                 MenuItem { action: Cura.Actions.deleteAll; }
                 MenuItem { action: Cura.Actions.resetAllTranslation; }
@@ -202,7 +207,7 @@ UM.MainWindow
                         id: sub_menu
                         title: model.name;
                         visible: actions != null
-                        enabled:actions != null
+                        enabled: actions != null
                         Instantiator
                         {
                             model: actions
@@ -219,6 +224,15 @@ UM.MainWindow
                     onObjectAdded: extension_menu.insertItem(index, object)
                     onObjectRemoved: extension_menu.removeItem(object)
                 }
+            }
+
+            Menu
+            {
+                id: plugin_menu
+                title: catalog.i18nc("@title:menu menubar:toplevel", "P&lugins")
+
+                MenuItem { action: Cura.Actions.browsePlugins }
+                MenuItem { action: Cura.Actions.configurePlugins }
             }
 
             Menu
@@ -266,37 +280,34 @@ UM.MainWindow
                 anchors.fill: parent;
                 onDropped:
                 {
-                    if(drop.urls.length > 0)
+                    if (drop.urls.length > 0)
                     {
-                        // Import models
-                        for(var i in drop.urls)
+                        // As the drop area also supports plugins, first check if it's a plugin that was dropped.
+                        if (drop.urls.length == 1)
                         {
-                            // There is no endsWith in this version of JS...
-                            if ((drop.urls[i].length <= 12) || (drop.urls[i].substring(drop.urls[i].length-12) !== ".curaprofile")) {
-                                // Drop an object
-                                UM.MeshFileHandler.readLocalFile(drop.urls[i]);
-                                if (i == drop.urls.length - 1)
+                            if (PluginRegistry.isPluginFile(drop.urls[0]))
+                            {
+                                // Try to install plugin & close.
+                                var result = PluginRegistry.installPlugin(drop.urls[0]);
+                                pluginInstallDialog.text = result.message;
+                                if (result.status == "ok")
                                 {
-                                    var meshName = backgroundItem.getMeshName(drop.urls[i].toString());
-                                    backgroundItem.hasMesh(decodeURIComponent(meshName));
+                                    pluginInstallDialog.icon = StandardIcon.Information;
                                 }
+                                else if (result.status == "duplicate")
+                                {
+                                    pluginInstallDialog.icon = StandardIcon.Warning;
+                                }
+                                else
+                                {
+                                    pluginInstallDialog.icon = StandardIcon.Critical;
+                                }
+                                pluginInstallDialog.open();
+                                return;
                             }
                         }
 
-                        // Import profiles
-                        var import_result = Cura.ContainerManager.importProfiles(drop.urls);
-                        if (import_result.message !== "") {
-                            messageDialog.text = import_result.message
-                            if(import_result.status == "ok")
-                            {
-                                messageDialog.icon = StandardIcon.Information
-                            }
-                            else
-                            {
-                                messageDialog.icon = StandardIcon.Critical
-                            }
-                            messageDialog.open()
-                        }
+                        openDialog.handleOpenFileUrls(drop.urls);
                     }
                 }
             }
@@ -313,19 +324,6 @@ UM.MainWindow
                 }
             }
 
-            Loader
-            {
-                id: view_panel
-
-                anchors.top: viewModeButton.bottom
-                anchors.topMargin: UM.Theme.getSize("default_margin").height;
-                anchors.left: viewModeButton.left;
-
-                height: childrenRect.height;
-
-                source: UM.ActiveView.valid ? UM.ActiveView.activeViewPanel : "";
-            }
-
             Button
             {
                 id: openFileButton;
@@ -335,33 +333,12 @@ UM.MainWindow
                 tooltip: '';
                 anchors
                 {
-                    top: parent.top;
+                    top: topbar.bottom;
+                    topMargin: UM.Theme.getSize("default_margin").height;
                     left: parent.left;
                 }
                 action: Cura.Actions.open;
             }
-
-            Image
-            {
-                id: logo
-                anchors
-                {
-                    left: parent.left
-                    leftMargin: UM.Theme.getSize("default_margin").width;
-                    bottom: parent.bottom
-                    bottomMargin: UM.Theme.getSize("default_margin").height;
-                }
-
-                source: UM.Theme.getImage("logo");
-                width: UM.Theme.getSize("logo").width;
-                height: UM.Theme.getSize("logo").height;
-                z: -1;
-
-                sourceSize.width: width;
-                sourceSize.height: height;
-            }
-
-
 
             Toolbar
             {
@@ -377,37 +354,30 @@ UM.MainWindow
                 }
             }
 
+            Topbar
+            {
+                id: topbar
+                anchors.left:parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                monitoringPrint: base.showPrintMonitor
+                onStartMonitoringPrint: base.showPrintMonitor = true
+                onStopMonitoringPrint: base.showPrintMonitor = false
+            }
+
             Sidebar
             {
                 id: sidebar;
 
                 anchors
                 {
-                    top: parent.top;
+                    top: topbar.bottom;
                     bottom: parent.bottom;
                     right: parent.right;
                 }
                 z: 1
-                onMonitoringPrintChanged: base.monitoringPrint = monitoringPrint
                 width: UM.Theme.getSize("sidebar").width;
-            }
-
-            Button
-            {
-                id: viewModeButton
-
-                anchors
-                {
-                    top: toolbar.bottom;
-                    topMargin: UM.Theme.getSize("window_margin").height;
-                    left: parent.left;
-                }
-                text: catalog.i18nc("@action:button","View Mode");
-                iconSource: UM.Theme.getIcon("viewmode");
-
-                style: UM.Theme.styles.tool_button;
-                tooltip: '';
-                menu: ViewMenu { }
+                monitoringPrint: base.showPrintMonitor
             }
 
             Rectangle
@@ -417,15 +387,13 @@ UM.MainWindow
                 color: UM.Theme.getColor("viewport_overlay")
                 anchors
                 {
-                    top: parent.top
+                    top: topbar.bottom
                     bottom: parent.bottom
                     left:parent.left
                     right: sidebar.left
                 }
                 visible: opacity > 0
-                opacity: base.monitoringPrint ? 0.75 : 0
-
-                Behavior on opacity { NumberAnimation { duration: 100; } }
+                opacity: base.showPrintMonitor ? 1 : 0
 
                 MouseArea {
                     anchors.fill: parent
@@ -435,41 +403,16 @@ UM.MainWindow
                 }
             }
 
-            Image
+            Loader
             {
-                id: cameraImage
-                width: Math.min(viewportOverlay.width, sourceSize.width)
-                height: sourceSize.height * width / sourceSize.width
+                sourceComponent: Cura.MachineManager.printerOutputDevices.length > 0 ? Cura.MachineManager.printerOutputDevices[0].monitorItem: null
+                visible: base.showPrintMonitor
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.horizontalCenterOffset: - UM.Theme.getSize("sidebar").width / 2
-                visible: base.monitoringPrint
-                onVisibleChanged:
-                {
-                    if(Cura.MachineManager.printerOutputDevices.length == 0 )
-                    {
-                        return;
-                    }
-                    if(visible)
-                    {
-                        Cura.MachineManager.printerOutputDevices[0].startCamera()
-                    } else
-                    {
-                        Cura.MachineManager.printerOutputDevices[0].stopCamera()
-                    }
-                }
-                source:
-                {
-                    if(!base.monitoringPrint)
-                    {
-                        return "";
-                    }
-                    if(Cura.MachineManager.printerOutputDevices.length > 0 && Cura.MachineManager.printerOutputDevices[0].cameraImage)
-                    {
-                        return Cura.MachineManager.printerOutputDevices[0].cameraImage;
-                    }
-                    return "";
-                }
+                anchors.verticalCenterOffset: UM.Theme.getSize("sidebar_header").height / 2
+                property real maximumWidth: viewportOverlay.width
+                property real maximumHeight: viewportOverlay.height
             }
 
             UM.MessageStack
@@ -528,6 +471,33 @@ UM.MainWindow
         onTriggered: preferences.visible = true
     }
 
+    MessageDialog
+    {
+        id: newProjectDialog
+        modality: Qt.ApplicationModal
+        title: catalog.i18nc("@title:window", "New project")
+        text: catalog.i18nc("@info:question", "Are you sure you want to start a new project? This will clear the build plate and any unsaved settings.")
+        standardButtons: StandardButton.Yes | StandardButton.No
+        icon: StandardIcon.Question
+        onYes:
+        {
+            CuraApplication.deleteAll();
+            Cura.Actions.resetProfile.trigger();
+        }
+    }
+
+    Connections
+    {
+        target: Cura.Actions.newProject
+        onTriggered:
+        {
+            if(Printer.platformActivity || Cura.MachineManager.hasUserSettings)
+            {
+                newProjectDialog.visible = true
+            }
+        }
+    }
+
     Connections
     {
         target: Cura.Actions.addProfile
@@ -582,6 +552,30 @@ UM.MainWindow
         }
     }
 
+    // show the installed plugins page in the preferences dialog
+    Connections
+    {
+        target: Cura.Actions.configurePlugins
+        onTriggered:
+        {
+            preferences.visible = true
+            preferences.setPage(5)
+        }
+    }
+
+    UM.ExtensionModel {
+        id: curaExtensions
+    }
+
+    // show the plugin browser dialog
+    Connections
+    {
+        target: Cura.Actions.browsePlugins
+        onTriggered: {
+            curaExtensions.callExtensionMethod("Plugin Browser", "browsePlugins")
+        }
+    }
+
     Timer
     {
         id: createProfileTimer
@@ -602,106 +596,14 @@ UM.MainWindow
         }
     }
 
-    Menu
-    {
-        id: objectContextMenu;
-
-        property variant objectId: -1;
-        MenuItem { action: Cura.Actions.centerObject; }
-        MenuItem { action: Cura.Actions.deleteObject; }
-        MenuItem { action: Cura.Actions.multiplyObject; }
-        MenuSeparator { }
-        MenuItem { action: Cura.Actions.selectAll; }
-        MenuItem { action: Cura.Actions.deleteAll; }
-        MenuItem { action: Cura.Actions.reloadAll; }
-        MenuItem { action: Cura.Actions.resetAllTranslation; }
-        MenuItem { action: Cura.Actions.resetAll; }
-        MenuSeparator { }
-        MenuItem { action: Cura.Actions.groupObjects; }
-        MenuItem { action: Cura.Actions.mergeObjects; }
-        MenuItem { action: Cura.Actions.unGroupObjects; }
-
-        Connections
-        {
-            target: Cura.Actions.deleteObject
-            onTriggered:
-            {
-                if(objectContextMenu.objectId != 0)
-                {
-                    Printer.deleteObject(objectContextMenu.objectId);
-                    objectContextMenu.objectId = 0;
-                }
-            }
-        }
-
-        MultiplyObjectOptions
-        {
-            id: multiplyObjectOptions
-        }
-
-        Connections
-        {
-            target: Cura.Actions.multiplyObject
-            onTriggered:
-            {
-                if(objectContextMenu.objectId != 0)
-                {
-                    multiplyObjectOptions.objectId = objectContextMenu.objectId;
-                    multiplyObjectOptions.visible = true;
-                    multiplyObjectOptions.reset();
-                    objectContextMenu.objectId = 0;
-                }
-            }
-        }
-
-        Connections
-        {
-            target: Cura.Actions.centerObject
-            onTriggered:
-            {
-                if(objectContextMenu.objectId != 0)
-                {
-                    Printer.centerObject(objectContextMenu.objectId);
-                    objectContextMenu.objectId = 0;
-                }
-            }
-        }
-    }
-
-    Menu
-    {
-        id: contextMenu;
-        MenuItem { action: Cura.Actions.selectAll; }
-        MenuItem { action: Cura.Actions.deleteAll; }
-        MenuItem { action: Cura.Actions.reloadAll; }
-        MenuItem { action: Cura.Actions.resetAllTranslation; }
-        MenuItem { action: Cura.Actions.resetAll; }
-        MenuSeparator { }
-        MenuItem { action: Cura.Actions.groupObjects; }
-        MenuItem { action: Cura.Actions.mergeObjects; }
-        MenuItem { action: Cura.Actions.unGroupObjects; }
-    }
-
-    Connections
-    {
-        target: UM.Controller
-        onContextMenuRequested:
-        {
-            if(objectId == 0)
-            {
-                contextMenu.popup();
-            } else
-            {
-                objectContextMenu.objectId = objectId;
-                objectContextMenu.popup();
-            }
-        }
+    ContextMenu {
+        id: contextMenu
     }
 
     Connections
     {
         target: Cura.Actions.quit
-        onTriggered: base.visible = false;
+        onTriggered: CuraApplication.closeApplication();
     }
 
     Connections
@@ -715,30 +617,127 @@ UM.MainWindow
         id: openDialog;
 
         //: File open dialog title
-        title: catalog.i18nc("@title:window","Open file")
+        title: catalog.i18nc("@title:window","Open file(s)")
         modality: UM.Application.platform == "linux" ? Qt.NonModal : Qt.WindowModal;
         selectMultiple: true
         nameFilters: UM.MeshFileHandler.supportedReadFileTypes;
         folder: CuraApplication.getDefaultPath("dialog_load_path")
         onAccepted:
         {
-            //Because several implementations of the file dialog only update the folder
-            //when it is explicitly set.
+            // Because several implementations of the file dialog only update the folder
+            // when it is explicitly set.
             var f = folder;
             folder = f;
 
             CuraApplication.setDefaultPath("dialog_load_path", folder);
 
-            for(var i in fileUrls)
-            {
-                UM.MeshFileHandler.readLocalFile(fileUrls[i])
+            handleOpenFileUrls(fileUrls);
+        }
 
-                if (i == fileUrls.length - 1)
+        // Yeah... I know... it is a mess to put all those things here.
+        // There are lots of user interactions in this part of the logic, such as showing a warning dialog here and there,
+        // etc. This means it will come back and forth from time to time between QML and Python. So, separating the logic
+        // and view here may require more effort but make things more difficult to understand.
+        function handleOpenFileUrls(fileUrlList)
+        {
+            // look for valid project files
+            var projectFileUrlList = [];
+            var hasGcode = false;
+            var nonGcodeFileList = [];
+            for (var i in fileUrlList)
+            {
+                var endsWithG = /\.g$/;
+                var endsWithGcode = /\.gcode$/;
+                if (endsWithG.test(fileUrlList[i]) || endsWithGcode.test(fileUrlList[i]))
                 {
-                    var meshName = backgroundItem.getMeshName(fileUrls.toString())
-                    backgroundItem.hasMesh(decodeURIComponent(meshName))
+                    continue;
+                }
+                else if (CuraApplication.checkIsValidProjectFile(fileUrlList[i]))
+                {
+                    projectFileUrlList.push(fileUrlList[i]);
+                }
+                nonGcodeFileList.push(fileUrlList[i]);
+            }
+            hasGcode = nonGcodeFileList.length < fileUrlList.length;
+
+            // show a warning if selected multiple files together with Gcode
+            var hasProjectFile = projectFileUrlList.length > 0;
+            var selectedMultipleFiles = fileUrlList.length > 1;
+            if (selectedMultipleFiles && hasGcode)
+            {
+                infoMultipleFilesWithGcodeDialog.selectedMultipleFiles = selectedMultipleFiles;
+                infoMultipleFilesWithGcodeDialog.hasProjectFile = hasProjectFile;
+                infoMultipleFilesWithGcodeDialog.fileUrls = nonGcodeFileList.slice();
+                infoMultipleFilesWithGcodeDialog.projectFileUrlList = projectFileUrlList.slice();
+                infoMultipleFilesWithGcodeDialog.open();
+            }
+            else
+            {
+                handleOpenFiles(selectedMultipleFiles, hasProjectFile, fileUrlList, projectFileUrlList);
+            }
+        }
+
+        function handleOpenFiles(selectedMultipleFiles, hasProjectFile, fileUrlList, projectFileUrlList)
+        {
+            // we only allow opening one project file
+            if (selectedMultipleFiles && hasProjectFile)
+            {
+                openFilesIncludingProjectsDialog.fileUrls = fileUrlList.slice();
+                openFilesIncludingProjectsDialog.show();
+                return;
+            }
+
+            if (hasProjectFile)
+            {
+                var projectFile = projectFileUrlList[0];
+
+                // check preference
+                var choice = UM.Preferences.getValue("cura/choice_on_open_project");
+                if (choice == "open_as_project")
+                {
+                    openFilesIncludingProjectsDialog.loadProjectFile(projectFile);
+                }
+                else if (choice == "open_as_model")
+                {
+                    openFilesIncludingProjectsDialog.loadModelFiles([projectFile].slice());
+                }
+                else    // always ask
+                {
+                    // ask whether to open as project or as models
+                    askOpenAsProjectOrModelsDialog.fileUrl = projectFile;
+                    askOpenAsProjectOrModelsDialog.show();
                 }
             }
+            else
+            {
+                openFilesIncludingProjectsDialog.loadModelFiles(fileUrlList.slice());
+            }
+        }
+    }
+
+    MessageDialog
+    {
+        id: pluginInstallDialog
+        title: catalog.i18nc("@window:title", "Install Plugin");
+        standardButtons: StandardButton.Ok
+        modality: Qt.ApplicationModal
+    }
+
+    MessageDialog {
+        id: infoMultipleFilesWithGcodeDialog
+        title: catalog.i18nc("@title:window", "Open File(s)")
+        icon: StandardIcon.Information
+        standardButtons: StandardButton.Ok
+        text: catalog.i18nc("@text:window", "We have found one or more G-Code files within the files you have selected. You can only open one G-Code file at a time. If you want to open a G-Code file, please just select only one.")
+
+        property var selectedMultipleFiles
+        property var hasProjectFile
+        property var fileUrls
+        property var projectFileUrlList
+
+        onAccepted:
+        {
+            openDialog.handleOpenFiles(selectedMultipleFiles, hasProjectFile, fileUrls, projectFileUrlList);
         }
     }
 
@@ -748,36 +747,14 @@ UM.MainWindow
         onTriggered: openDialog.open()
     }
 
-    FileDialog
+    OpenFilesIncludingProjectsDialog
     {
-        id: openWorkspaceDialog;
-
-        //: File open dialog title
-        title: catalog.i18nc("@title:window","Open workspace")
-        modality: UM.Application.platform == "linux" ? Qt.NonModal : Qt.WindowModal;
-        selectMultiple: false
-        nameFilters: UM.WorkspaceFileHandler.supportedReadFileTypes;
-        folder: CuraApplication.getDefaultPath("dialog_load_path")
-        onAccepted:
-        {
-            //Because several implementations of the file dialog only update the folder
-            //when it is explicitly set.
-            var f = folder;
-            folder = f;
-
-            CuraApplication.setDefaultPath("dialog_load_path", folder);
-
-            for(var i in fileUrls)
-            {
-                UM.WorkspaceFileHandler.readLocalFile(fileUrls[i])
-            }
-        }
+        id: openFilesIncludingProjectsDialog
     }
 
-    Connections
+    AskOpenAsProjectOrModelsDialog
     {
-        target: Cura.Actions.loadWorkspace
-        onTriggered: openWorkspaceDialog.open()
+        id: askOpenAsProjectOrModelsDialog
     }
 
     EngineLog
@@ -818,7 +795,7 @@ UM.MainWindow
 
         function start(id)
         {
-            var actions =  Cura.MachineActionManager.getFirstStartActions(id)
+            var actions = Cura.MachineActionManager.getFirstStartActions(id)
             resetPages() // Remove previous pages
 
             for (var i = 0; i < actions.length; i++)
@@ -840,14 +817,14 @@ UM.MainWindow
     {
         id: messageDialog
         modality: Qt.ApplicationModal
-        onAccepted: Printer.messageBoxClosed(clickedButton)
-        onApply: Printer.messageBoxClosed(clickedButton)
-        onDiscard: Printer.messageBoxClosed(clickedButton)
-        onHelp: Printer.messageBoxClosed(clickedButton)
-        onNo: Printer.messageBoxClosed(clickedButton)
-        onRejected: Printer.messageBoxClosed(clickedButton)
-        onReset: Printer.messageBoxClosed(clickedButton)
-        onYes: Printer.messageBoxClosed(clickedButton)
+        onAccepted: CuraApplication.messageBoxClosed(clickedButton)
+        onApply: CuraApplication.messageBoxClosed(clickedButton)
+        onDiscard: CuraApplication.messageBoxClosed(clickedButton)
+        onHelp: CuraApplication.messageBoxClosed(clickedButton)
+        onNo: CuraApplication.messageBoxClosed(clickedButton)
+        onRejected: CuraApplication.messageBoxClosed(clickedButton)
+        onReset: CuraApplication.messageBoxClosed(clickedButton)
+        onYes: CuraApplication.messageBoxClosed(clickedButton)
     }
 
     Connections
@@ -862,6 +839,20 @@ UM.MainWindow
             messageDialog.standardButtons = buttons
             messageDialog.icon = icon
             messageDialog.visible = true
+        }
+    }
+
+    DiscardOrKeepProfileChangesDialog
+    {
+        id: discardOrKeepProfileChangesDialog
+    }
+
+    Connections
+    {
+        target: CuraApplication
+        onShowDiscardOrKeepProfileChanges:
+        {
+            discardOrKeepProfileChangesDialog.show()
         }
     }
 
@@ -912,4 +903,3 @@ UM.MainWindow
         }
     }
 }
-

@@ -1,5 +1,5 @@
 # Copyright (c) 2016 Ultimaker B.V.
-# Uranium is released under the terms of the AGPLv3 or higher.
+# Uranium is released under the terms of the LGPLv3 or higher.
 
 from UM.Tool import Tool
 from UM.Scene.Selection import Selection
@@ -112,4 +112,4 @@ class PerObjectSettingsTool(Tool):
             self._single_model_selected = False # Group is selected, so tool needs to be disabled
         else:
             self._single_model_selected = True
-        Application.getInstance().getController().toolEnabledChanged.emit(self._plugin_id, (self._advanced_mode or self._multi_extrusion) and self._single_model_selected)
+        Application.getInstance().getController().toolEnabledChanged.emit(self._plugin_id, self._advanced_mode and self._single_model_selected)
