@@ -1,0 +1,60 @@
+# Compiled and generated things.
+build
+*.pyc
+__pycache__
+*.mo
+docs/html
+*.log
+resources/i18n/en
+resources/i18n/x-test
+resources/firmware
+resources/materials
+LC_MESSAGES
+.cache
+*.qmlc
+
+#MacOS
+.DS_Store
+
+# Editors and IDEs.
+*kdev*
+*.kate-swp
+*.lprof
+*~
+*.qm
+.idea
+cura.desktop
+
+# Eclipse+PyDev
+.project
+.pydevproject
+.settings
+
+# Debian packaging
+debian*
+
+#Externally located plug-ins.
+plugins/Doodle3D-cura-plugin
+plugins/GodMode
+plugins/PostProcessingPlugin
+plugins/X3GWriter
+plugins/FlatProfileExporter
+plugins/ProfileFlattener
+plugins/cura-god-mode-plugin
+plugins/cura-big-flame-graph
+
+#Build stuff
+CMakeCache.txt
+CMakeFiles
+CPackSourceConfig.cmake
+Testing/
+CTestTestfile.cmake
+Makefile*
+junit-pytest-*
+CuraVersion.py
+cmake_install.cmake
+
+#Debug
+*.gcode
+run.sh
+
