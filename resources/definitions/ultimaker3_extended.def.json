@@ -5,7 +5,7 @@
     "inherits": "ultimaker3",
     "metadata": {
         "author": "Ultimaker",
-        "manufacturer": "Ultimaker",
+        "manufacturer": "Ultimaker B.V.",
         "category": "Ultimaker",
         "quality_definition": "ultimaker3",
         "visible": true,
@@ -18,7 +18,7 @@
         "has_variant_materials": true,
         "has_materials": true,
         "has_variants": true,
-        "preferred_variant": "*aa*",
+        "preferred_variant": "*aa04*",
         "variants_name": "Print core",
         "machine_extruder_trains":
         {

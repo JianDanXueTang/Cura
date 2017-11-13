@@ -8,6 +8,81 @@ import QtQuick.Controls.Styles 1.1
 import UM 1.1 as UM
 
 QtObject {
+    property Component info_button: Component {
+        ButtonStyle {
+            label: Text {
+                renderType: Text.NativeRendering
+                verticalAlignment: Text.AlignVCenter
+                horizontalAlignment: Text.AlignHCenter
+                font: UM.Theme.getFont("small")
+                color: UM.Theme.getColor("button_text")
+                text: control.text
+            }
+
+            background: Rectangle {
+                implicitHeight: UM.Theme.getSize("info_button").height
+                implicitWidth: width
+                border.width: 0
+                radius: height * 0.5
+
+                color: {
+                    if (control.pressed) {
+                        return UM.Theme.getColor("button_active");
+                    } else if (control.hovered) {
+                        return UM.Theme.getColor("button_hover");
+                    } else {
+                        return UM.Theme.getColor("button");
+                    }
+                }
+                Behavior on color { ColorAnimation { duration: 50; } }
+            }
+        }
+    }
+
+    property Component mode_switch: Component {
+        SwitchStyle {
+            groove: Rectangle {
+                implicitWidth: UM.Theme.getSize("mode_switch").width
+                implicitHeight: UM.Theme.getSize("mode_switch").height
+                radius: implicitHeight / 2
+                color: {
+                    if(control.hovered || control._hovered) {
+                        return UM.Theme.getColor("mode_switch_hover");
+                    } else {
+                        return UM.Theme.getColor("mode_switch");
+                    }
+                }
+                Behavior on color { ColorAnimation { duration: 50; } }
+                border.color: {
+                    if(control.hovered || control._hovered) {
+                        return UM.Theme.getColor("mode_switch_border_hover");
+                    } else {
+                        return UM.Theme.getColor("mode_switch_border");
+                    }
+                }
+                Behavior on border.color { ColorAnimation { duration: 50; } }
+                border.width: 1
+            }
+
+            handle: Rectangle {
+                implicitWidth: implicitHeight
+                implicitHeight: UM.Theme.getSize("mode_switch").height
+                radius: implicitHeight / 2
+
+                color: {
+                    if (control.pressed || (control.checkable && control.checked)) {
+                        return UM.Theme.getColor("sidebar_header_active");
+                    } else if(control.hovered) {
+                        return UM.Theme.getColor("sidebar_header_hover");
+                    } else {
+                        return UM.Theme.getColor("sidebar_header_bar");
+                    }
+                }
+                Behavior on color { ColorAnimation { duration: 50; } }
+            }
+        }
+    }
+
     property Component sidebar_header_button: Component {
         ButtonStyle {
             background: Rectangle {
@@ -63,11 +138,11 @@ QtObject {
         }
     }
 
-    property Component sidebar_header_tab: Component {
+    property Component topbar_header_tab: Component {
         ButtonStyle {
             background: Item {
-                implicitWidth: Theme.getSize("button").width;
-                implicitHeight: Theme.getSize("button").height;
+                implicitWidth: Theme.getSize("topbar_button").width;
+                implicitHeight: Theme.getSize("topbar_button").height;
 
                 Rectangle {
                     id: buttonFace;
@@ -99,15 +174,48 @@ QtObject {
                 }
             }
 
-            label: Item {
-                Image {
-                    anchors.centerIn: parent;
-                    opacity: !control.enabled ? 0.2 : 1.0
-                    source: control.iconSource;
-                    width: Theme.getSize("button_icon").width;
-                    height: Theme.getSize("button_icon").height;
+            label: Item
+            {
 
-                    sourceSize: Theme.getSize("button_icon")
+                implicitHeight: Theme.getSize("button_icon").height
+                implicitWidth: Theme.getSize("topbar_button").width;
+                Item
+                {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.verticalCenter: parent.verticalCenter;
+                    width: childrenRect.width
+                    height: Theme.getSize("button_icon").height
+                    UM.RecolorImage
+                    {
+                        id: icon
+                        color: UM.Theme.getColor("text_reversed")
+                        opacity: !control.enabled ? 0.2 : 1.0
+                        source: control.iconSource
+                        width: Theme.getSize("button_icon").width
+                        height: Theme.getSize("button_icon").height
+
+                        sourceSize: Theme.getSize("button_icon")
+                    }
+                    UM.RecolorImage
+                    {
+                        visible: control.overlayIconSource != ""
+                        color: control.overlayColor
+                        opacity: !control.enabled ? 0.2 : 1.0
+                        source: control.overlayIconSource
+                        width: Theme.getSize("button_icon").width
+                        height: Theme.getSize("button_icon").height
+
+                        sourceSize: Theme.getSize("button_icon")
+                    }
+                    Label
+                    {
+                        text: control.text;
+                        anchors.left: icon.right
+                        anchors.leftMargin: Theme.getSize("default_margin").width
+                        anchors.verticalCenter: parent.verticalCenter;
+                        font: UM.Theme.getFont("large");
+                        color: UM.Theme.getColor("text_reversed")
+                    }
                 }
             }
         }
@@ -156,7 +264,9 @@ QtObject {
                     property bool down: control.pressed || (control.checkable && control.checked);
 
                     color: {
-                        if(control.checkable && control.checked && control.hovered) {
+                        if(control.customColor !== undefined && control.customColor !== null) {
+                            return control.customColor
+                        } else if(control.checkable && control.checked && control.hovered) {
                             return Theme.getColor("button_active_hover");
                         } else if(control.pressed || (control.checkable && control.checked)) {
                             return Theme.getColor("button_active");
@@ -279,11 +389,11 @@ QtObject {
                     color: {
                         if(!control.enabled) {
                             return Theme.getColor("setting_category_disabled_border");
-                        } else if(control.hovered && control.checkable && control.checked) {
+                        } else if((control.hovered || control.activeFocus) && control.checkable && control.checked) {
                             return Theme.getColor("setting_category_active_hover_border");
                         } else if(control.pressed || (control.checkable && control.checked)) {
                             return Theme.getColor("setting_category_active_border");
-                        } else if(control.hovered) {
+                        } else if(control.hovered || control.activeFocus) {
                             return Theme.getColor("setting_category_hover_border");
                         } else {
                             return Theme.getColor("setting_category_border");
@@ -419,7 +529,7 @@ QtObject {
             {
                 color:
                 {
-                    if (!enabled)
+                    if(!enabled)
                     {
                         return UM.Theme.getColor("setting_control_disabled");
                     }

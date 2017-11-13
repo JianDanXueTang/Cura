@@ -5,7 +5,7 @@
     "inherits": "ultimaker2",
     "metadata": {
         "author": "Ultimaker",
-        "manufacturer": "Ultimaker",
+        "manufacturer": "Ultimaker B.V.",
         "category": "Ultimaker",
         "weight": 3,
         "file_formats": "text/x-gcode",
@@ -13,6 +13,7 @@
         "platform": "ultimaker2go_platform.obj",
         "platform_texture": "Ultimaker2Gobackplate.png",
         "platform_offset": [0, 0, 0],
+        "first_start_actions": [],
         "supported_actions":["UpgradeFirmware"]
     },
 

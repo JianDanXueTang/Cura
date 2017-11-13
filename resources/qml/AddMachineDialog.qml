@@ -20,6 +20,11 @@ UM.Dialog
     property string preferredCategory: "Ultimaker"
     property string activeCategory: preferredCategory
 
+    minimumWidth: UM.Theme.getSize("modal_window_minimum").width
+    minimumHeight: UM.Theme.getSize("modal_window_minimum").height
+    width: minimumWidth
+    height: minimumHeight
+
     onVisibilityChanged:
     {
         // Reset selection and machine name
@@ -69,10 +74,8 @@ UM.Dialog
                 width: machineList.width
                 style: ButtonStyle
                 {
-                    background: Rectangle
+                    background: Item
                     {
-                        border.width: 0
-                        color: "transparent";
                         height: UM.Theme.getSize("standard_list_lineheight").height
                         width: machineList.width
                     }

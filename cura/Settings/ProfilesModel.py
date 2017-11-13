@@ -32,13 +32,13 @@ class ProfilesModel(InstanceContainersModel):
 
     ##  Get the singleton instance for this class.
     @classmethod
-    def getInstance(cls):
+    def getInstance(cls) -> "ProfilesModel":
         # Note: Explicit use of class name to prevent issues with inheritance.
-        if ProfilesModel.__instance is None:
+        if not ProfilesModel.__instance:
             ProfilesModel.__instance = cls()
         return ProfilesModel.__instance
 
-    __instance = None
+    __instance = None   # type: "ProfilesModel"
 
     ##  Fetch the list of containers to display.
     #
@@ -107,10 +107,10 @@ class ProfilesModel(InstanceContainersModel):
                     continue
 
             #Quality has no value for layer height either. Get the layer height from somewhere lower in the stack.
-            skip_until_container = global_container_stack.findContainer({"type": "material"})
-            if not skip_until_container: #No material in stack.
-                skip_until_container = global_container_stack.findContainer({"type": "variant"})
-                if not skip_until_container: #No variant in stack.
+            skip_until_container = global_container_stack.material
+            if not skip_until_container or skip_until_container == ContainerRegistry.getInstance().getEmptyInstanceContainer(): #No material in stack.
+                skip_until_container = global_container_stack.variant
+                if not skip_until_container or skip_until_container == ContainerRegistry.getInstance().getEmptyInstanceContainer(): #No variant in stack.
                     skip_until_container = global_container_stack.getBottom()
             item["layer_height"] = str(global_container_stack.getRawProperty("layer_height", "value", skip_until_container = skip_until_container.getId())) + unit #Fall through to the currently loaded material.
             yield item

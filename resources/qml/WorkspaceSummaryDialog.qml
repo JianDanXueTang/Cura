@@ -13,11 +13,8 @@ UM.Dialog
 {
     title: catalog.i18nc("@title:window", "Save Project")
 
-    width: 550
-    minimumWidth: 550
-
-    height: 350
-    minimumHeight: 350
+    width: 500
+    height: 400
 
     property int spacerHeight: 10
 
@@ -41,15 +38,7 @@ UM.Dialog
 
     Item
     {
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        anchors.left: parent.left
-        anchors.right: parent.right
-
-        anchors.topMargin: 20
-        anchors.bottomMargin: 20
-        anchors.leftMargin:20
-        anchors.rightMargin: 20
+        anchors.fill: parent
 
         UM.SettingDefinitionsModel
         {
@@ -63,8 +52,12 @@ UM.Dialog
         }
         UM.I18nCatalog
         {
-            id: catalog;
-            name: "cura";
+            id: catalog
+            name: "cura"
+        }
+        SystemPalette
+        {
+            id: palette
         }
 
         Column
@@ -75,12 +68,12 @@ UM.Dialog
             {
                 id: titleLabel
                 text: catalog.i18nc("@action:title", "Summary - Cura Project")
-                font.pixelSize: 22
+                font.pointSize: 18
             }
             Rectangle
             {
                 id: separator
-                color: "black"
+                color: palette.text
                 width: parent.width
                 height: 1
             }
@@ -102,12 +95,12 @@ UM.Dialog
                 Label
                 {
                     text: catalog.i18nc("@action:label", "Type")
-                    width: parent.width / 3
+                    width: (parent.width / 3) | 0
                 }
                 Label
                 {
                     text: Cura.MachineManager.activeDefinitionName
-                    width: parent.width / 3
+                    width: (parent.width / 3) | 0
                 }
             }
             Row
@@ -117,12 +110,12 @@ UM.Dialog
                 Label
                 {
                     text: catalog.i18nc("@action:label", "Name")
-                    width: parent.width / 3
+                    width: (parent.width / 3) | 0
                 }
                 Label
                 {
                     text: Cura.MachineManager.activeMachineName
-                    width: parent.width / 3
+                    width: (parent.width / 3) | 0
                 }
             }
 
@@ -149,12 +142,12 @@ UM.Dialog
                         Label
                         {
                             text: catalog.i18nc("@action:label", "%1 & material").arg(Cura.MachineManager.activeDefinitionVariantsName)
-                            width: parent.width / 3
+                            width: (parent.width / 3) | 0
                         }
                         Label
                         {
                             text: Cura.MachineManager.activeVariantNames[index] + ", " + modelData
-                            width: parent.width / 3
+                            width: (parent.width / 3) | 0
                         }
                     }
                 }
@@ -177,12 +170,12 @@ UM.Dialog
                 Label
                 {
                     text: catalog.i18nc("@action:label", "Not in profile")
-                    width: parent.width / 3
+                    width: (parent.width / 3) | 0
                 }
                 Label
                 {
                     text: catalog.i18ncp("@action:label", "%1 override", "%1 overrides", Cura.MachineManager.numUserSettings).arg(Cura.MachineManager.numUserSettings)
-                    width: parent.width / 3
+                    width: (parent.width / 3) | 0
                 }
                 visible: Cura.MachineManager.numUserSettings
             }
@@ -193,12 +186,12 @@ UM.Dialog
                 Label
                 {
                     text: catalog.i18nc("@action:label", "Name")
-                    width: parent.width / 3
+                    width: (parent.width / 3) | 0
                 }
                 Label
                 {
                     text: Cura.MachineManager.activeQualityName
-                    width: parent.width / 3
+                    width: (parent.width / 3) | 0
                 }
 
             }
@@ -221,49 +214,57 @@ UM.Dialog
                 Label
                 {
                     text: catalog.i18nc("@action:label", "Visible settings:")
-                    width: parent.width / 3
+                    width: (parent.width / 3) | 0
                 }
                 Label
                 {
                     text: catalog.i18nc("@action:label", "%1 out of %2" ).arg(definitionsModel.visibleCount).arg(Cura.MachineManager.totalNumberOfSettings)
-                    width: parent.width / 3
+                    width: (parent.width / 3) | 0
                 }
             }
-            CheckBox
+
+            Item // Spacer
             {
-                id: dontShowAgainCheckbox
-                text: catalog.i18nc("@action:label", "Don't show project summary on save again")
-                checked: dontShowAgain
+                height: spacerHeight
+                width: height
             }
         }
 
+        CheckBox
+        {
+            id: dontShowAgainCheckbox
+            anchors.bottom: cancel_button.top
+            anchors.bottomMargin: UM.Theme.getSize("default_margin").height
+            anchors.left: parent.left
+
+            text: catalog.i18nc("@action:label", "Don't show project summary on save again")
+            checked: dontShowAgain
+        }
+
+        Button
+        {
+            id: cancel_button
+            anchors.bottom: parent.bottom
+            anchors.right: ok_button.left
+            anchors.rightMargin: 2
+
+            text: catalog.i18nc("@action:button","Cancel");
+            enabled: true
+            onClicked: close()
+        }
 
         Button
         {
             id: ok_button
+            anchors.bottom: parent.bottom
+            anchors.right: parent.right
+
             text: catalog.i18nc("@action:button","Save");
             enabled: true
             onClicked: {
                 close()
                 yes()
             }
-            anchors.bottomMargin: - 0.5 * height
-            anchors.bottom: parent.bottom
-            anchors.right: parent.right
-        }
-
-        Button
-        {
-            id: cancel_button
-            text: catalog.i18nc("@action:button","Cancel");
-            enabled: true
-            onClicked: close()
-
-            anchors.bottom: parent.bottom
-            anchors.right: ok_button.left
-            anchors.bottomMargin: - 0.5 * height
-            anchors.rightMargin:2
-
         }
     }
 }

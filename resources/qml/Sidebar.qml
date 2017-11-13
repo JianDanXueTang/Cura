@@ -1,4 +1,4 @@
-// Copyright (c) 2015 Ultimaker B.V.
+// Copyright (c) 2017 Ultimaker B.V.
 // Cura is released under the terms of the AGPLv3 or higher.
 
 import QtQuick 2.2
@@ -15,21 +15,15 @@ Rectangle
     id: base;
 
     property int currentModeIndex;
-    property bool monitoringPrint: false
-    Connections
-    {
-        target: Printer
-        onShowPrintMonitor:
-        {
-            base.monitoringPrint = show;
-            showSettings.checked = !show;
-            showMonitor.checked = show;
-        }
-    }
+    property bool hideSettings: PrintInformation.preSliced
 
     // Is there an output device for this printer?
     property bool printerConnected: Cura.MachineManager.printerOutputDevices.length != 0
     property bool printerAcceptsCommands: printerConnected && Cura.MachineManager.printerOutputDevices[0].acceptsCommands
+    property var connectedPrinter: Cura.MachineManager.printerOutputDevices.length >= 1 ? Cura.MachineManager.printerOutputDevices[0] : null
+    property int backendState: UM.Backend.state;
+
+    property bool monitoringPrint: false
 
     color: UM.Theme.getColor("sidebar")
     UM.I18nCatalog { id: catalog; name:"cura"}
@@ -86,164 +80,9 @@ Rectangle
         }
     }
 
-    // Printer selection and mode selection buttons for changing between Setting & Monitor print mode
-    Rectangle
-    {
-        id: sidebarHeaderBar
-        anchors.left: parent.left
-        anchors.right: parent.right
-        height: childrenRect.height
-        color: UM.Theme.getColor("sidebar_header_bar")
-
-        Row
-        {
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.rightMargin: UM.Theme.getSize("default_margin").width
-            spacing: UM.Theme.getSize("default_margin").width
-
-            ToolButton
-            {
-                id: machineSelection
-                text: Cura.MachineManager.activeMachineName
-
-                width: parent.width - (showSettings.width + showMonitor.width + 2 * UM.Theme.getSize("default_margin").width)
-                height: UM.Theme.getSize("sidebar_header").height
-                tooltip: Cura.MachineManager.activeMachineName
-
-                anchors.verticalCenter: parent.verticalCenter
-                style: ButtonStyle {
-                    background: Rectangle {
-                        color: control.hovered ? UM.Theme.getColor("button_hover") :
-                               control.pressed ? UM.Theme.getColor("button_hover") : UM.Theme.getColor("sidebar_header_bar")
-                        Behavior on color { ColorAnimation { duration: 50; } }
-
-                        UM.RecolorImage {
-                            id: downArrow
-                            anchors.verticalCenter: parent.verticalCenter
-                            anchors.right: parent.right
-                            anchors.rightMargin: UM.Theme.getSize("default_margin").width
-                            width: UM.Theme.getSize("standard_arrow").width
-                            height: UM.Theme.getSize("standard_arrow").height
-                            sourceSize.width: width
-                            sourceSize.height: width
-                            color: UM.Theme.getColor("text_reversed")
-                            source: UM.Theme.getIcon("arrow_bottom")
-                        }
-                        Label {
-                            id: sidebarComboBoxLabel
-                            color: UM.Theme.getColor("text_reversed")
-                            text: control.text;
-                            elide: Text.ElideRight;
-                            anchors.left: parent.left;
-                            anchors.leftMargin: UM.Theme.getSize("default_margin").width
-                            anchors.right: downArrow.left;
-                            anchors.rightMargin: control.rightMargin;
-                            anchors.verticalCenter: parent.verticalCenter;
-                            font: UM.Theme.getFont("large")
-                        }
-                    }
-                    label: Label{}
-                }
-
-                menu: PrinterMenu { }
-            }
-
-            Button
-            {
-                id: showSettings
-                width: height
-                height: UM.Theme.getSize("sidebar_header").height
-                onClicked: monitoringPrint = false
-                iconSource: UM.Theme.getIcon("tab_settings");
-                checkable: true
-                checked: !monitoringPrint
-                exclusiveGroup: sidebarHeaderBarGroup
-                property string tooltipText: catalog.i18nc("@tooltip", "<b>Print Setup</b><br/><br/>Edit or review the settings for the active print job.")
-
-                onHoveredChanged: {
-                    if (hovered)
-                    {
-                        tooltipDelayTimer.item = showSettings
-                        tooltipDelayTimer.text = tooltipText
-                        tooltipDelayTimer.start();
-                    }
-                    else
-                    {
-                        tooltipDelayTimer.stop();
-                        base.hideTooltip();
-                    }
-                }
-
-                style:  UM.Theme.styles.sidebar_header_tab
-            }
-
-            Button
-            {
-                id: showMonitor
-                width: height
-                height: UM.Theme.getSize("sidebar_header").height
-                onClicked: monitoringPrint = true
-                iconSource: {
-                    if(!printerConnected)
-                        return UM.Theme.getIcon("tab_monitor");
-                    else if(!printerAcceptsCommands)
-                        return UM.Theme.getIcon("tab_monitor_unknown");
-
-                    if(Cura.MachineManager.printerOutputDevices[0].printerState == "maintenance")
-                    {
-                        return UM.Theme.getIcon("tab_monitor_busy");
-                    }
-
-                    switch(Cura.MachineManager.printerOutputDevices[0].jobState)
-                    {
-                        case "printing":
-                        case "pre_print":
-                        case "wait_cleanup":
-                            return UM.Theme.getIcon("tab_monitor_busy");
-                        case "ready":
-                        case "":
-                            return UM.Theme.getIcon("tab_monitor_connected")
-                        case "paused":
-                            return UM.Theme.getIcon("tab_monitor_paused")
-                        case "error":
-                            return UM.Theme.getIcon("tab_monitor_stopped")
-                        case "offline":
-                            return UM.Theme.getIcon("tab_monitor_offline")
-                        default:
-                            return UM.Theme.getIcon("tab_monitor")
-                    }
-                }
-                checkable: true
-                checked: monitoringPrint
-                exclusiveGroup: sidebarHeaderBarGroup
-                property string tooltipText: catalog.i18nc("@tooltip", "<b>Print Monitor</b><br/><br/>Monitor the state of the connected printer and the print job in progress.")
-
-                onHoveredChanged: {
-                    if (hovered)
-                    {
-                        tooltipDelayTimer.item = showMonitor
-                        tooltipDelayTimer.text = tooltipText
-                        tooltipDelayTimer.start();
-                    }
-                    else
-                    {
-                        tooltipDelayTimer.stop();
-                        base.hideTooltip();
-                    }
-                }
-
-                style:  UM.Theme.styles.sidebar_header_tab
-            }
-            ExclusiveGroup { id: sidebarHeaderBarGroup }
-        }
-    }
-
     SidebarHeader {
         id: header
         width: parent.width
-
-        anchors.top: sidebarHeaderBar.bottom
 
         onShowTooltip: base.showTooltip(item, location, text)
         onHideTooltip: base.hideTooltip()
@@ -252,7 +91,7 @@ Rectangle
     Rectangle {
         id: headerSeparator
         width: parent.width
-        visible: !monitoringPrint
+        visible: !monitoringPrint && !hideSettings
         height: visible ? UM.Theme.getSize("sidebar_lining").height : 0
         color: UM.Theme.getColor("sidebar_lining")
         anchors.top: header.bottom
@@ -268,9 +107,9 @@ Rectangle
         }
     }
 
-    Label {
+    Text {
         id: settingsModeLabel
-        text: catalog.i18nc("@label:listbox", "Print Setup");
+        text: !hideSettings ? catalog.i18nc("@label:listbox", "Print Setup") : catalog.i18nc("@label:listbox","Print Setup disabled\nG-code files cannot be modified");
         anchors.left: parent.left
         anchors.leftMargin: UM.Theme.getSize("default_margin").width;
         anchors.top: headerSeparator.bottom
@@ -284,13 +123,14 @@ Rectangle
 
     Rectangle {
         id: settingsModeSelection
+        color: "transparent"
         width: parent.width * 0.55
         height: UM.Theme.getSize("sidebar_header_mode_toggle").height
         anchors.right: parent.right
         anchors.rightMargin: UM.Theme.getSize("default_margin").width
         anchors.top: headerSeparator.bottom
         anchors.topMargin: UM.Theme.getSize("default_margin").height
-        visible: !monitoringPrint
+        visible: !monitoringPrint && !hideSettings
         Component{
             id: wizardDelegate
             Button {
@@ -298,7 +138,7 @@ Rectangle
                 anchors.left: parent.left
                 anchors.leftMargin: model.index * (settingsModeSelection.width / 2)
                 anchors.verticalCenter: parent.verticalCenter
-                width: 0.5 * parent.width - (model.showFilterButton ? toggleFilterButton.width : 0)
+                width: 0.5 * parent.width
                 text: model.text
                 exclusiveGroup: modeMenuGroup;
                 checkable: true;
@@ -343,66 +183,124 @@ Rectangle
             }
         }
         ExclusiveGroup { id: modeMenuGroup; }
-        ListView{
-            id: modesList
-            property var index: 0
-            model: modesListModel
-            delegate: wizardDelegate
-            anchors.top: parent.top
-            anchors.left: parent.left
-            width: parent.width
-        }
-    }
 
-    Button
-    {
-        id: toggleFilterButton
-
-        anchors.right: parent.right
-        anchors.rightMargin: UM.Theme.getSize("default_margin").width
-        anchors.top: headerSeparator.bottom
-        anchors.topMargin: UM.Theme.getSize("default_margin").height
-
-        height: settingsModeSelection.height
-        width: visible ? height : 0
-
-        visible: !monitoringPrint && modesListModel.get(base.currentModeIndex) != undefined && modesListModel.get(base.currentModeIndex).showFilterButton
-        opacity: visible ? 1 : 0
-
-        onClicked: sidebarContents.currentItem.toggleFilterField()
-
-        style: ButtonStyle
+        Label
         {
-            background: Rectangle
+            id: toggleLeftText
+            anchors.right: modeToggleSwitch.left
+            anchors.rightMargin: UM.Theme.getSize("default_margin").width
+            anchors.verticalCenter: parent.verticalCenter
+            text: ""
+            color:
             {
-                border.width: UM.Theme.getSize("default_lining").width
-                border.color: UM.Theme.getColor("toggle_checked_border")
-                color: visible ? UM.Theme.getColor("toggle_checked") : UM.Theme.getColor("toggle_hovered")
-                Behavior on color { ColorAnimation { duration: 50; } }
+                if(toggleLeftTextMouseArea.containsMouse)
+                {
+                    return UM.Theme.getColor("mode_switch_text_hover");
+                }
+                else if(!modeToggleSwitch.checked)
+                {
+                    return UM.Theme.getColor("mode_switch_text_checked");
+                }
+                else
+                {
+                    return UM.Theme.getColor("mode_switch_text");
+                }
             }
-            label: UM.RecolorImage
-            {
-                anchors.verticalCenter: parent.verticalCenter
-                anchors.right: parent.right
-                anchors.rightMargin: UM.Theme.getSize("default_margin").width / 2
+            font: UM.Theme.getFont("default")
 
-                source: UM.Theme.getIcon("search")
-                color: UM.Theme.getColor("toggle_checked_text")
+            MouseArea
+            {
+                id: toggleLeftTextMouseArea
+                hoverEnabled: true
+                anchors.fill: parent
+                onClicked:
+                {
+                    modeToggleSwitch.checked = false;
+                }
+
+                Component.onCompleted:
+                {
+                    clicked.connect(modeToggleSwitch.clicked)
+                }
             }
         }
-    }
 
-    Label {
-        id: monitorLabel
-        text: catalog.i18nc("@label","Printer Monitor");
-        anchors.left: parent.left
-        anchors.leftMargin: UM.Theme.getSize("default_margin").width;
-        anchors.top: headerSeparator.bottom
-        anchors.topMargin: UM.Theme.getSize("default_margin").height
-        width: parent.width * 0.45
-        font: UM.Theme.getFont("large")
-        color: UM.Theme.getColor("text")
-        visible: monitoringPrint
+        Switch
+        {
+            id: modeToggleSwitch
+            checked: false
+            anchors.right: toggleRightText.left
+            anchors.rightMargin: UM.Theme.getSize("default_margin").width
+            anchors.verticalCenter: parent.verticalCenter
+
+            property bool _hovered: modeToggleSwitchMouseArea.containsMouse || toggleLeftTextMouseArea.containsMouse || toggleRightTextMouseArea.containsMouse
+
+            MouseArea
+            {
+                id: modeToggleSwitchMouseArea
+                anchors.fill: parent
+                hoverEnabled: true
+                acceptedButtons: Qt.NoButton
+            }
+
+            onCheckedChanged:
+            {
+                var index = 0;
+                if (checked)
+                {
+                    index = 1;
+                }
+                updateActiveMode(index);
+            }
+
+            function updateActiveMode(index)
+            {
+                base.currentModeIndex = index;
+                UM.Preferences.setValue("cura/active_mode", index);
+            }
+
+            style: UM.Theme.styles.mode_switch
+        }
+
+        Label
+        {
+            id: toggleRightText
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            text: ""
+            color:
+            {
+                if(toggleRightTextMouseArea.containsMouse)
+                {
+                    return UM.Theme.getColor("mode_switch_text_hover");
+                }
+                else if(modeToggleSwitch.checked)
+                {
+                    return UM.Theme.getColor("mode_switch_text_checked");
+                }
+                else
+                {
+                    return UM.Theme.getColor("mode_switch_text");
+                }
+            }
+            font: UM.Theme.getFont("default")
+
+            MouseArea
+            {
+                id: toggleRightTextMouseArea
+                hoverEnabled: true
+                anchors.fill: parent
+                onClicked:
+                {
+                    modeToggleSwitch.checked = true;
+                }
+
+                Component.onCompleted:
+                {
+                    clicked.connect(modeToggleSwitch.clicked)
+                }
+            }
+        }
     }
 
     StackView
@@ -414,7 +312,7 @@ Rectangle
         anchors.topMargin: UM.Theme.getSize("default_margin").height
         anchors.left: base.left
         anchors.right: base.right
-        visible: !monitoringPrint
+        visible: !monitoringPrint && !hideSettings
 
         delegate: StackViewDelegate
         {
@@ -447,14 +345,48 @@ Rectangle
 
     Loader
     {
+        id: controlItem
         anchors.bottom: footerSeparator.top
-        anchors.top: monitorLabel.bottom
-        anchors.topMargin: UM.Theme.getSize("default_margin").height
+        anchors.top: headerSeparator.bottom
         anchors.left: base.left
-        anchors.leftMargin: UM.Theme.getSize("default_margin").width
         anchors.right: base.right
-        source: monitoringPrint ? "PrintMonitor.qml": "SidebarContents.qml"
-   }
+        sourceComponent:
+        {
+            if(monitoringPrint && connectedPrinter != null)
+            {
+                if(connectedPrinter.controlItem != null)
+                {
+                    return connectedPrinter.controlItem
+                }
+            }
+            return null
+        }
+    }
+
+    Loader
+    {
+        anchors.bottom: footerSeparator.top
+        anchors.top: headerSeparator.bottom
+        anchors.left: base.left
+        anchors.right: base.right
+        source:
+        {
+            if(controlItem.sourceComponent == null)
+            {
+                if(monitoringPrint)
+                {
+                    return "PrintMonitor.qml"
+                } else
+                {
+                    return "SidebarContents.qml"
+                }
+            }
+            else
+            {
+                return ""
+            }
+        }
+    }
 
     Rectangle
     {
@@ -466,6 +398,8 @@ Rectangle
         anchors.bottomMargin: UM.Theme.getSize("default_margin").height
     }
 
+    // SaveButton and MonitorButton are actually the bottom footer panels.
+    // "!monitoringPrint" currently means "show-settings-mode"
     SaveButton
     {
         id: saveButton
@@ -490,6 +424,7 @@ Rectangle
         id: tooltip;
     }
 
+    // Setting mode: Recommended or Custom
     ListModel
     {
         id: modesListModel;
@@ -518,21 +453,23 @@ Rectangle
         modesListModel.append({
             text: catalog.i18nc("@title:tab", "Recommended"),
             tooltipText: catalog.i18nc("@tooltip", "<b>Recommended Print Setup</b><br/><br/>Print with the recommended settings for the selected printer, material and quality."),
-            item: sidebarSimple,
-            showFilterButton: false
+            item: sidebarSimple
         })
         modesListModel.append({
             text: catalog.i18nc("@title:tab", "Custom"),
             tooltipText: catalog.i18nc("@tooltip", "<b>Custom Print Setup</b><br/><br/>Print with finegrained control over every last bit of the slicing process."),
-            item: sidebarAdvanced,
-            showFilterButton: true
+            item: sidebarAdvanced
         })
         sidebarContents.push({ "item": modesListModel.get(base.currentModeIndex).item, "immediate": true });
 
-        var index = parseInt(UM.Preferences.getValue("cura/active_mode"))
-        if(index)
+        toggleLeftText.text = modesListModel.get(0).text;
+        toggleRightText.text = modesListModel.get(1).text;
+
+        var index = parseInt(UM.Preferences.getValue("cura/active_mode"));
+        if (index)
         {
             currentModeIndex = index;
+            modeToggleSwitch.checked = index > 0;
         }
     }
 

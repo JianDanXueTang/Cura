@@ -32,9 +32,11 @@ Item {
     property var stackLevels: propertyProvider.stackLevels
     property var stackLevel: stackLevels[0]
 
+    signal focusReceived()
+    signal setActiveFocusToNextSetting(bool forward)
     signal contextMenuRequested()
-    signal showTooltip(string text);
-    signal hideTooltip();
+    signal showTooltip(string text)
+    signal hideTooltip()
     signal showAllHiddenInheritedSettings(string category_id)
     property string tooltipText:
     {
@@ -140,13 +142,11 @@ Item {
             {
                 id: linkedSettingIcon;
 
-                visible: Cura.MachineManager.activeStackId != Cura.MachineManager.activeMachineId && (!definition.settable_per_extruder || definition.limit_to_extruder != "-1") && base.showLinkedSettingIcon
+                visible: Cura.MachineManager.activeStackId != Cura.MachineManager.activeMachineId && (!definition.settable_per_extruder || String(globalPropertyProvider.properties.limit_to_extruder) != "-1") && base.showLinkedSettingIcon
 
                 height: parent.height;
                 width: height;
 
-                backgroundColor: UM.Theme.getColor("setting_control");
-                hoverBackgroundColor: UM.Theme.getColor("setting_control")
                 color: UM.Theme.getColor("setting_control_button")
                 hoverColor: UM.Theme.getColor("setting_control_button")
 
@@ -173,8 +173,6 @@ Item {
                 height: parent.height;
                 width: height;
 
-                backgroundColor: UM.Theme.getColor("setting_control");
-                hoverBackgroundColor: UM.Theme.getColor("setting_control_highlight")
                 color: UM.Theme.getColor("setting_control_button")
                 hoverColor: UM.Theme.getColor("setting_control_button_hover")
 
@@ -224,7 +222,7 @@ Item {
                     }
 
                     // If the setting does not have a limit_to_extruder property (or is -1), use the active stack.
-                    if(globalPropertyProvider.properties.limit_to_extruder == null || globalPropertyProvider.properties.limit_to_extruder == -1)
+                    if(globalPropertyProvider.properties.limit_to_extruder == null || String(globalPropertyProvider.properties.limit_to_extruder) == "-1")
                     {
                         return Cura.SettingInheritanceManager.settingsWithInheritanceWarning.indexOf(definition.key) >= 0;
                     }
@@ -234,7 +232,7 @@ Item {
                         // Observed when loading workspace, probably when SettingItems are removed.
                         return false;
                     }
-                    return Cura.SettingInheritanceManager.getOverridesForExtruder(definition.key, globalPropertyProvider.properties.limit_to_extruder).indexOf(definition.key) >= 0;
+                    return Cura.SettingInheritanceManager.getOverridesForExtruder(definition.key, String(globalPropertyProvider.properties.limit_to_extruder)).indexOf(definition.key) >= 0;
                 }
 
                 height: parent.height;
@@ -278,8 +276,6 @@ Item {
                     }
                 }
 
-                backgroundColor: UM.Theme.getColor("setting_control");
-                hoverBackgroundColor: UM.Theme.getColor("setting_control_highlight")
                 color: UM.Theme.getColor("setting_control_button")
                 hoverColor: UM.Theme.getColor("setting_control_button_hover")
 

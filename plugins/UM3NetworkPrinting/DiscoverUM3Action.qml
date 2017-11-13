@@ -12,7 +12,6 @@ Cura.MachineAction
     anchors.fill: parent;
     property var selectedPrinter: null
     property bool completeProperties: true
-    property var connectingToPrinter: null
 
     Connections
     {
@@ -33,9 +32,8 @@ Cura.MachineAction
         if(base.selectedPrinter && base.completeProperties)
         {
             var printerKey = base.selectedPrinter.getKey()
-            if(connectingToPrinter != printerKey) {
-                // prevent an infinite loop
-                connectingToPrinter = printerKey;
+            if(manager.getStoredKey() != printerKey)
+            {
                 manager.setKey(printerKey);
                 completed();
             }
@@ -116,7 +114,7 @@ Cura.MachineAction
 
             Column
             {
-                width: parent.width * 0.5
+                width: (parent.width * 0.5) | 0
                 spacing: UM.Theme.getSize("default_margin").height
 
                 ScrollView
@@ -195,14 +193,14 @@ Cura.MachineAction
                     wrapMode: Text.WordWrap
                     //: Tips label
                     //TODO: get actual link from webteam
-                    text: catalog.i18nc("@label", "If your printer is not listed, read the <a href='%1'>network-printing troubleshooting guide</a>").arg("https://ultimaker.com/en/troubleshooting");
+                    text: catalog.i18nc("@label", "If your printer is not listed, read the <a href='%1'>network printing troubleshooting guide</a>").arg("https://ultimaker.com/en/troubleshooting");
                     onLinkActivated: Qt.openUrlExternally(link)
                 }
 
             }
             Column
             {
-                width: parent.width * 0.5
+                width: (parent.width * 0.5) | 0
                 visible: base.selectedPrinter ? true : false
                 spacing: UM.Theme.getSize("default_margin").height
                 Label
@@ -220,13 +218,13 @@ Cura.MachineAction
                     columns: 2
                     Label
                     {
-                        width: parent.width * 0.5
+                        width: (parent.width * 0.5) | 0
                         wrapMode: Text.WordWrap
                         text: catalog.i18nc("@label", "Type")
                     }
                     Label
                     {
-                        width: parent.width * 0.5
+                        width: (parent.width * 0.5) | 0
                         wrapMode: Text.WordWrap
                         text:
                         {
@@ -251,25 +249,25 @@ Cura.MachineAction
                     }
                     Label
                     {
-                        width: parent.width * 0.5
+                        width: (parent.width * 0.5) | 0
                         wrapMode: Text.WordWrap
                         text: catalog.i18nc("@label", "Firmware version")
                     }
                     Label
                     {
-                        width: parent.width * 0.5
+                        width: (parent.width * 0.5) | 0
                         wrapMode: Text.WordWrap
                         text: base.selectedPrinter ? base.selectedPrinter.firmwareVersion : ""
                     }
                     Label
                     {
-                        width: parent.width * 0.5
+                        width: (parent.width * 0.5) | 0
                         wrapMode: Text.WordWrap
                         text: catalog.i18nc("@label", "Address")
                     }
                     Label
                     {
-                        width: parent.width * 0.5
+                        width: (parent.width * 0.5) | 0
                         wrapMode: Text.WordWrap
                         text: base.selectedPrinter ? base.selectedPrinter.ipAddress : ""
                     }
@@ -342,6 +340,8 @@ Cura.MachineAction
                 {
                     regExp: /[a-zA-Z0-9\.\-\_]*/
                 }
+
+                onAccepted: btnOk.clicked()
             }
         }
 
@@ -355,6 +355,7 @@ Cura.MachineAction
                 }
             },
             Button {
+                id: btnOk
                 text: catalog.i18nc("@action:button", "Ok")
                 onClicked:
                 {
