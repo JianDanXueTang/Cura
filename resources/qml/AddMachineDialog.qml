@@ -1,5 +1,5 @@
 // Copyright (c) 2016 Ultimaker B.V.
-// Cura is released under the terms of the AGPLv3 or higher.
+// Cura is released under the terms of the LGPLv3 or higher.
 
 import QtQuick 2.2
 import QtQuick.Controls 1.1
@@ -19,6 +19,11 @@ UM.Dialog
     property bool firstRun: false
     property string preferredCategory: "Ultimaker"
     property string activeCategory: preferredCategory
+
+    minimumWidth: UM.Theme.getSize("modal_window_minimum").width
+    minimumHeight: UM.Theme.getSize("modal_window_minimum").height
+    width: minimumWidth
+    height: minimumHeight
 
     onVisibilityChanged:
     {
@@ -69,10 +74,8 @@ UM.Dialog
                 width: machineList.width
                 style: ButtonStyle
                 {
-                    background: Rectangle
+                    background: Item
                     {
-                        border.width: 0
-                        color: "transparent";
                         height: UM.Theme.getSize("standard_list_lineheight").height
                         width: machineList.width
                     }

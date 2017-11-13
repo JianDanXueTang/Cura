@@ -1,18 +1,17 @@
-# Copyright (c) 2016 Ultimaker B.V.
-# Cura is released under the terms of the AGPLv3 or higher.
+# Copyright (c) 2017 Ultimaker B.V.
+# Cura is released under the terms of the LGPLv3 or higher.
 
 import collections
 
 from PyQt5.QtCore import pyqtProperty, pyqtSignal, Qt
 
-import UM.Application
-import UM.Logger
+from UM.Logger import Logger
 import UM.Qt
-import UM.Settings
-from UM.i18n import i18nCatalog
+from UM.Application import Application
 from UM.Settings.ContainerRegistry import ContainerRegistry
-
 import os
+
+from UM.i18n import i18nCatalog
 
 
 class QualitySettingsModel(UM.Qt.ListModel.ListModel):
@@ -27,7 +26,7 @@ class QualitySettingsModel(UM.Qt.ListModel.ListModel):
     def __init__(self, parent = None):
         super().__init__(parent = parent)
 
-        self._container_registry = UM.Settings.ContainerRegistry.getInstance()
+        self._container_registry = ContainerRegistry.getInstance()
 
         self._extruder_id = None
         self._extruder_definition_id = None
@@ -94,11 +93,11 @@ class QualitySettingsModel(UM.Qt.ListModel.ListModel):
         items = []
 
         settings = collections.OrderedDict()
-        definition_container = UM.Application.getInstance().getGlobalContainerStack().getBottom()
+        definition_container = Application.getInstance().getGlobalContainerStack().getBottom()
 
         containers = self._container_registry.findInstanceContainers(id = self._quality_id)
         if not containers:
-            UM.Logger.log("w", "Could not find a quality container with id %s", self._quality_id)
+            Logger.log("w", "Could not find a quality container with id %s", self._quality_id)
             return
 
         quality_container = None
@@ -117,12 +116,12 @@ class QualitySettingsModel(UM.Qt.ListModel.ListModel):
 
             quality_container = self._container_registry.findInstanceContainers(**criteria)
             if not quality_container:
-                UM.Logger.log("w", "Could not find a quality container matching quality changes %s", quality_changes_container.getId())
+                Logger.log("w", "Could not find a quality container matching quality changes %s", quality_changes_container.getId())
                 return
             quality_container = quality_container[0]
 
         quality_type = quality_container.getMetaDataEntry("quality_type")
-        definition_id = UM.Application.getInstance().getMachineManager().getQualityDefinitionId(quality_container.getDefinition())
+        definition_id = Application.getInstance().getMachineManager().getQualityDefinitionId(quality_container.getDefinition())
         definition = quality_container.getDefinition()
 
         # Check if the definition container has a translation file.
@@ -161,7 +160,7 @@ class QualitySettingsModel(UM.Qt.ListModel.ListModel):
             containers = self._container_registry.findInstanceContainers(**criteria)
 
         if not containers:
-            UM.Logger.log("w", "Could not find any quality containers matching the search criteria %s" % str(criteria))
+            Logger.log("w", "Could not find any quality containers matching the search criteria %s" % str(criteria))
             return
 
         if quality_changes_container:
@@ -169,7 +168,7 @@ class QualitySettingsModel(UM.Qt.ListModel.ListModel):
             if self._extruder_definition_id != "":
                 extruder_definitions = self._container_registry.findDefinitionContainers(id = self._extruder_definition_id)
                 if extruder_definitions:
-                    criteria["extruder"] = UM.Application.getInstance().getMachineManager().getQualityDefinitionId(extruder_definitions[0])
+                    criteria["extruder"] = Application.getInstance().getMachineManager().getQualityDefinitionId(extruder_definitions[0])
                     criteria["name"] = quality_changes_container.getName()
             else:
                 criteria["extruder"] = None
@@ -178,7 +177,7 @@ class QualitySettingsModel(UM.Qt.ListModel.ListModel):
             if changes:
                 containers.extend(changes)
 
-        global_container_stack = UM.Application.getInstance().getGlobalContainerStack()
+        global_container_stack = Application.getInstance().getGlobalContainerStack()
         is_multi_extrusion = global_container_stack.getProperty("machine_extruder_count", "value") > 1
 
         current_category = ""
