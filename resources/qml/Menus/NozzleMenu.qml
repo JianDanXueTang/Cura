@@ -1,5 +1,5 @@
-// Copyright (c) 2016 Ultimaker B.V.
-// Cura is released under the terms of the AGPLv3 or higher.
+// Copyright (c) 2017 Ultimaker B.V.
+// Cura is released under the terms of the LGPLv3 or higher.
 
 import QtQuick 2.2
 import QtQuick.Controls 1.1
@@ -23,19 +23,22 @@ Menu
             if(printerConnected && Cura.MachineManager.printerOutputDevices[0].hotendIds.length > extruderIndex)
             {
                 var nozzleName = Cura.MachineManager.printerOutputDevices[0].hotendIds[extruderIndex];
-                return catalog.i18nc("@title:menuitem %1 is the value from the printer", "Automatic: %1").arg(nozzleName);
+                return catalog.i18nc("@title:menuitem %1 is the nozzle currently loaded in the printer", "Automatic: %1").arg(nozzleName);
             }
             return "";
         }
         visible: printerConnected && Cura.MachineManager.printerOutputDevices[0].hotendIds.length > extruderIndex
         onTriggered:
         {
+            var activeExtruderIndex = ExtruderManager.activeExtruderIndex;
+            ExtruderManager.setActiveExtruderIndex(extruderIndex);
             var hotendId = Cura.MachineManager.printerOutputDevices[0].hotendIds[extruderIndex];
             var itemIndex = nozzleInstantiator.model.find("name", hotendId);
             if(itemIndex > -1)
             {
-                Cura.MachineManager.setActiveVariant(nozzleInstantiator.model.getItem(itemIndex).id)
+                Cura.MachineManager.setActiveVariant(nozzleInstantiator.model.getItem(itemIndex).id);
             }
+            ExtruderManager.setActiveExtruderIndex(activeExtruderIndex);
         }
     }
 
@@ -56,11 +59,17 @@ Menu
             }
         }
         MenuItem {
-            text: model.name;
-            checkable: true;
-            checked: model.id == Cura.MachineManager.activeVariantId;
+            text: model.name
+            checkable: true
+            checked: model.id == Cura.MachineManager.allActiveVariantIds[ExtruderManager.extruderIds[extruderIndex]]
             exclusiveGroup: group
-            onTriggered: Cura.MachineManager.setActiveVariant(model.id)
+            onTriggered:
+            {
+                var activeExtruderIndex = ExtruderManager.activeExtruderIndex;
+                ExtruderManager.setActiveExtruderIndex(extruderIndex);
+                Cura.MachineManager.setActiveVariant(model.id);
+                ExtruderManager.setActiveExtruderIndex(activeExtruderIndex);
+            }
         }
         onObjectAdded: menu.insertItem(index, object)
         onObjectRemoved: menu.removeItem(object)
