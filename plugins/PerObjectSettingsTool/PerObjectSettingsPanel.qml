@@ -1,5 +1,5 @@
-// Copyright (c) 2016 Ultimaker B.V.
-// Uranium is released under the terms of the AGPLv3 or higher.
+// Copyright (c) 2017 Ultimaker B.V.
+// Uranium is released under the terms of the LGPLv3 or higher.
 
 import QtQuick 2.2
 import QtQuick.Controls 1.2
@@ -26,134 +26,11 @@ Item {
 
         spacing: UM.Theme.getSize("default_margin").height
 
-        Row
-        {
-            spacing: UM.Theme.getSize("default_margin").width
-            Label
-            {
-                text: catalog.i18nc("@label Followed by extruder selection drop-down.", "Print model with")
-                anchors.verticalCenter: extruderSelector.verticalCenter
-
-                color: UM.Theme.getColor("setting_control_text")
-                font: UM.Theme.getFont("default")
-                visible: extruderSelector.visible
-            }
-            ComboBox
-            {
-                id: extruderSelector
-
-                model: Cura.ExtrudersModel
-                {
-                    id: extrudersModel
-                    onModelChanged: extruderSelector.color = extrudersModel.getItem(extruderSelector.currentIndex).color
-                }
-                property string color: extrudersModel.getItem(extruderSelector.currentIndex).color
-                visible: machineExtruderCount.properties.value > 1
-                textRole: "name"
-                width: UM.Theme.getSize("setting_control").width
-                height: UM.Theme.getSize("section").height
-                MouseArea
-                {
-                    anchors.fill: parent
-                    acceptedButtons: Qt.NoButton
-                    onWheel: wheel.accepted = true;
-                }
-
-                style: ComboBoxStyle
-                {
-                    background: Rectangle
-                    {
-                        color:
-                        {
-                            if(extruderSelector.hovered || base.activeFocus)
-                            {
-                                return UM.Theme.getColor("setting_control_highlight");
-                            }
-                            else
-                            {
-                                return UM.Theme.getColor("setting_control");
-                            }
-                        }
-                        border.width: UM.Theme.getSize("default_lining").width
-                        border.color: UM.Theme.getColor("setting_control_border")
-                    }
-                    label: Item
-                    {
-                        Rectangle
-                        {
-                            id: swatch
-                            height: UM.Theme.getSize("setting_control").height / 2
-                            width: height
-                            anchors.left: parent.left
-                            anchors.leftMargin: UM.Theme.getSize("default_lining").width
-                            anchors.verticalCenter: parent.verticalCenter
-
-                            color: extruderSelector.color
-                            border.width: UM.Theme.getSize("default_lining").width
-                            border.color: !enabled ? UM.Theme.getColor("setting_control_disabled_border") : UM.Theme.getColor("setting_control_border")
-                        }
-                        Label
-                        {
-                            anchors.left: swatch.right
-                            anchors.leftMargin: UM.Theme.getSize("default_lining").width
-                            anchors.right: downArrow.left
-                            anchors.rightMargin: UM.Theme.getSize("default_lining").width
-                            anchors.verticalCenter: parent.verticalCenter
-
-                            text: extruderSelector.currentText
-                            font: UM.Theme.getFont("default")
-                            color: !enabled ? UM.Theme.getColor("setting_control_disabled_text") : UM.Theme.getColor("setting_control_text")
-
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
-                        }
-
-                        UM.RecolorImage
-                        {
-                            id: downArrow
-                            anchors.right: parent.right
-                            anchors.rightMargin: UM.Theme.getSize("default_lining").width * 2
-                            anchors.verticalCenter: parent.verticalCenter
-
-                            source: UM.Theme.getIcon("arrow_bottom")
-                            width: UM.Theme.getSize("standard_arrow").width
-                            height: UM.Theme.getSize("standard_arrow").height
-                            sourceSize.width: width + 5
-                            sourceSize.height: width + 5
-
-                            color: UM.Theme.getColor("setting_control_text")
-                        }
-                    }
-                }
-
-                onActivated:
-                {
-                    UM.ActiveTool.setProperty("SelectedActiveExtruder", extrudersModel.getItem(index).id);
-                    extruderSelector.color = extrudersModel.getItem(index).color;
-                }
-                onModelChanged: updateCurrentIndex();
-
-                function updateCurrentIndex()
-                {
-                    for(var i = 0; i < extrudersModel.rowCount(); ++i)
-                    {
-                        if(extrudersModel.getItem(i).id == UM.ActiveTool.properties.getValue("SelectedActiveExtruder"))
-                        {
-                            extruderSelector.currentIndex = i;
-                            extruderSelector.color = extrudersModel.getItem(i).color;
-                            return;
-                        }
-                    }
-                    extruderSelector.currentIndex = -1;
-                }
-            }
-        }
-
         Column
         {
             // This is to ensure that the panel is first increasing in size up to 200 and then shows a scrollbar.
             // It kinda looks ugly otherwise (big panel, no content on it)
-            property int maximumHeight: 200 * Screen.devicePixelRatio
+            property int maximumHeight: 200 * screenScaleFactor
             height: Math.min(contents.count * (UM.Theme.getSize("section").height + UM.Theme.getSize("default_lining").height), maximumHeight)
 
             ScrollView
@@ -161,6 +38,7 @@ Item {
                 height: parent.height
                 width: UM.Theme.getSize("setting").width + UM.Theme.getSize("setting").height
                 style: UM.Theme.styles.scrollview
+
                 ListView
                 {
                     id: contents
@@ -189,6 +67,7 @@ Item {
                             property var definition: model
                             property var settingDefinitionsModel: addedSettingsModel
                             property var propertyProvider: provider
+                            property var globalPropertyProvider: inheritStackProvider
 
                             //Qt5.4.2 and earlier has a bug where this causes a crash: https://bugreports.qt.io/browse/QTBUG-35989
                             //In addition, while it works for 5.5 and higher, the ordering of the actual combo box drop down changes,
@@ -209,12 +88,16 @@ Item {
                                 {
                                     case "int":
                                         return settingTextField
+                                    case "[int]":
+                                        return settingTextField
                                     case "float":
                                         return settingTextField
                                     case "enum":
                                         return settingComboBox
                                     case "extruder":
                                         return settingExtruder
+                                    case "optional_extruder":
+                                        return settingOptionalExtruder
                                     case "bool":
                                         return settingCheckBox
                                     case "str":
@@ -229,10 +112,10 @@ Item {
 
                         Button
                         {
-                            width: UM.Theme.getSize("setting").height / 2;
-                            height: UM.Theme.getSize("setting").height;
+                            width: (UM.Theme.getSize("setting").height / 2) | 0
+                            height: UM.Theme.getSize("setting").height
 
-                            onClicked: addedSettingsModel.setVisible(model.key, false);
+                            onClicked: addedSettingsModel.setVisible(model.key, false)
 
                             style: ButtonStyle
                             {
@@ -252,6 +135,8 @@ Item {
                             }
                         }
 
+                        // Specialty provider that only watches global_inherits (we cant filter on what property changed we get events
+                        // so we bypass that to make a dedicated provider).
                         UM.SettingPropertyProvider
                         {
                             id: provider
@@ -263,12 +148,51 @@ Item {
                             removeUnusedValue: false
                         }
 
-                        // If the extruder by which the object needs to be printed is changed, ensure that the
-                        // display is also notified of the fact.
+                        UM.SettingPropertyProvider
+                        {
+                            id: inheritStackProvider
+                            containerStackId: UM.ActiveTool.properties.getValue("ContainerID")
+                            key: model.key
+                            watchedProperties: [ "limit_to_extruder" ]
+                        }
+
                         Connections
                         {
-                            target: extruderSelector
-                            onActivated: provider.forcePropertiesChanged()
+                            target: inheritStackProvider
+                            onPropertiesChanged:
+                            {
+                                provider.forcePropertiesChanged();
+                            }
+                        }
+
+                        Connections
+                        {
+                            target: UM.ActiveTool
+                            onPropertiesChanged:
+                            {
+                                // the values cannot be bound with UM.ActiveTool.properties.getValue() calls,
+                                // so here we connect to the signal and update the those values.
+                                if (typeof UM.ActiveTool.properties.getValue("SelectedObjectId") !== "undefined")
+                                {
+                                    const selectedObjectId = UM.ActiveTool.properties.getValue("SelectedObjectId");
+                                    if (addedSettingsModel.visibilityHandler.selectedObjectId != selectedObjectId)
+                                    {
+                                        addedSettingsModel.visibilityHandler.selectedObjectId = selectedObjectId;
+                                    }
+                                }
+                                if (typeof UM.ActiveTool.properties.getValue("ContainerID") !== "undefined")
+                                {
+                                    const containerId = UM.ActiveTool.properties.getValue("ContainerID");
+                                    if (provider.containerStackId != containerId)
+                                    {
+                                        provider.containerStackId = containerId;
+                                    }
+                                    if (inheritStackProvider.containerStackId != containerId)
+                                    {
+                                        inheritStackProvider.containerStackId = containerId;
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -469,6 +393,13 @@ Item {
         id: settingExtruder;
 
         Cura.SettingExtruder { }
+    }
+
+    Component
+    {
+        id: settingOptionalExtruder
+
+        Cura.SettingOptionalExtruder { }
     }
 
     Component
