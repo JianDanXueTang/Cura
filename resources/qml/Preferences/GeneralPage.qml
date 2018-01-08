@@ -101,11 +101,11 @@ UM.PreferencesPage
             UM.Preferences.resetPreference("info/send_slice_info")
             sendDataCheckbox.checked = boolCheck(UM.Preferences.getValue("info/send_slice_info"))
         }
-        //★
-        if (plugins.find("id", "UpdateChecker") > -1) {
-            UM.Preferences.resetPreference("info/automatic_update_check")
-            checkUpdatesCheckbox.checked = boolCheck(UM.Preferences.getValue("info/automatic_update_check"))
-        }
+        //★ 
+        //if (plugins.find("id", "UpdateChecker") > -1) {
+        //    UM.Preferences.resetPreference("info/automatic_update_check")
+        //    checkUpdatesCheckbox.checked = boolCheck(UM.Preferences.getValue("info/automatic_update_check"))
+        //}
     }
 
     ScrollView
@@ -645,9 +645,8 @@ UM.PreferencesPage
 
             UM.TooltipArea {
             	//★ 关闭cura-2.7中，主界面底部的 A new version is available 窗口
-                //visible: plugins.find("id", "UpdateChecker") > -1
-                visible: false
-                //修改状态： 待windows下mingw32-make测试
+                visible: plugins.find("id", "UpdateChecker") > -1
+                //修改状态： 待windows下mingw32-make测试，失败！但已经证明Um中的UpdateCheckerJob.py就是显示更新窗口内容的代码
                 
                 width: childrenRect.width
                 height: visible ? childrenRect.height : 0
