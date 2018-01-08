@@ -643,9 +643,9 @@ UM.PreferencesPage
                 text: catalog.i18nc("@label","Privacy")
             }
 
-           // UM.TooltipArea {
+           		UM.TooltipArea {
             	//★ 关闭cura-2.7中，主界面底部的 A new version is available 窗口
-          //      visible: plugins.find("id", "UpdateChecker") > -1
+         		//visible: plugins.find("id", "UpdateChecker") > -1
                 //修改状态： 待windows下mingw32-make测试，失败！但已经证明Um中的UpdateCheckerJob.py就是显示更新窗口内容的代码
                 
                 //★ 关闭设置里的自动切片按钮
