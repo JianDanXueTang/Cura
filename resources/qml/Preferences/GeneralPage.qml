@@ -102,10 +102,10 @@ UM.PreferencesPage
             sendDataCheckbox.checked = boolCheck(UM.Preferences.getValue("info/send_slice_info"))
         }
         
-        if (plugins.find("id", "UpdateChecker") > -1) {
-            UM.Preferences.resetPreference("info/automatic_update_check")
-            checkUpdatesCheckbox.checked = boolCheck(UM.Preferences.getValue("info/automatic_update_check"))
-        }
+      //  if (plugins.find("id", "UpdateChecker") > -1) {
+      //      UM.Preferences.resetPreference("info/automatic_update_check")
+      //      checkUpdatesCheckbox.checked = boolCheck(UM.Preferences.getValue("info/automatic_update_check"))
+      //  }
     }
 
     ScrollView
@@ -659,7 +659,7 @@ UM.PreferencesPage
          //           checked: boolCheck(UM.Preferences.getValue("info/automatic_update_check"))
          //           onCheckedChanged: UM.Preferences.setValue("info/automatic_update_check", checked)
          //       }
-            }
+         //   }
 
             UM.TooltipArea {
                 visible: plugins.find("id", "SliceInfoPlugin") > -1
