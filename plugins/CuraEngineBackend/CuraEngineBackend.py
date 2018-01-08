@@ -125,9 +125,11 @@ class CuraEngineBackend(QObject, Backend):
         Application.getInstance().getController().toolOperationStopped.connect(self._onToolOperationStopped)
 
         self._slice_start_time = None
-
-        Preferences.getInstance().addPreference("general/auto_slice", True)
-
+        
+        # ★ 设置手动切片为默认
+        #Preferences.getInstance().addPreference("general/auto_slice", True)
+        Preferences.getInstance().addPreference("general/auto_slice", False)
+        #修改状态：√ 成功
         self._use_timer = False
         # When you update a setting and other settings get changed through inheritance, many propertyChanged signals are fired.
         # This timer will group them up, and only slice for the last setting changed signal.

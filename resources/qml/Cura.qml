@@ -166,7 +166,7 @@ UM.MainWindow
 
             ViewMenu {
             
-           		 //★ 视图菜单由 可见 改为 关闭
+           		//★ 视图菜单由 可见 改为 关闭
             	//添加visible，并设定值为false
             	visible: false
                 //修改状态： √ 成功

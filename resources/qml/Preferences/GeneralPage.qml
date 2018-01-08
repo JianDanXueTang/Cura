@@ -297,6 +297,12 @@ UM.PreferencesPage
 
             UM.TooltipArea
             {
+            
+           		//★ 关闭设置里的自动切片按钮
+            	//添加visible，并设定值为false
+            	visible: false
+                //修改状态： √ 成功
+                
                 width: childrenRect.width;
                 height: childrenRect.height;
 
