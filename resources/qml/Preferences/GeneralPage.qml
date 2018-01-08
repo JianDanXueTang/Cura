@@ -648,18 +648,23 @@ UM.PreferencesPage
           //      visible: plugins.find("id", "UpdateChecker") > -1
                 //修改状态： 待windows下mingw32-make测试，失败！但已经证明Um中的UpdateCheckerJob.py就是显示更新窗口内容的代码
                 
-         //       width: childrenRect.width
-          //      height: visible ? childrenRect.height : 0
-          //      text: catalog.i18nc("@info:tooltip","Should Cura check for updates when the program is started?")
+                //★ 关闭设置里的自动切片按钮
+            	//添加visible，并设定值为false
+            	visible: false
+                //修改状态： √ 成功    
+               
+                width: childrenRect.width
+                height: visible ? childrenRect.height : 0
+                text: catalog.i18nc("@info:tooltip","Should Cura check for updates when the program is started?")
 
-         //       CheckBox
-         //       {
-         //           id: checkUpdatesCheckbox
-          //          text: catalog.i18nc("@option:check","Check for updates on start")
-         //           checked: boolCheck(UM.Preferences.getValue("info/automatic_update_check"))
-         //           onCheckedChanged: UM.Preferences.setValue("info/automatic_update_check", checked)
-         //       }
-         //   }
+                CheckBox
+                {
+                    id: checkUpdatesCheckbox
+                    text: catalog.i18nc("@option:check","Check for updates on start")
+                    checked: boolCheck(UM.Preferences.getValue("info/automatic_update_check"))
+                    onCheckedChanged: UM.Preferences.setValue("info/automatic_update_check", checked)
+                }
+            }
 
             UM.TooltipArea {
                 visible: plugins.find("id", "SliceInfoPlugin") > -1
